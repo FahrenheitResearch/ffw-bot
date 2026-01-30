@@ -445,7 +445,21 @@ async function main() {
   client.login(DISCORD_TOKEN);
 }
 
-main().catch(err => {
-  console.error('Fatal error:', err);
+main().catch(async err => {
+  console.error('');
+  console.error('========================================');
+  console.error('  ERROR - Bot failed to start');
+  console.error('========================================');
+  console.error('');
+  console.error(err.message || err);
+  console.error('');
+
+  // Keep window open so user can see error
+  const rl = require('readline').createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  await new Promise(resolve => rl.question('Press Enter to exit...', resolve));
+  rl.close();
   process.exit(1);
 });
