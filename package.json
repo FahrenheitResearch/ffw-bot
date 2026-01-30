@@ -1,0 +1,16 @@
+{
+  "name": "fire-weather-warning-bot",
+  "version": "1.0.0",
+  "description": "Discord bot that sends notifications for Fire Weather Warnings across the US",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
