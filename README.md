@@ -1,8 +1,14 @@
-# Fire Weather Warning Discord Bot
+# Fire Weather Alert Discord Bot
 
-A Discord bot that automatically sends notifications when Fire Weather Warnings are issued anywhere in the United States.
+A Discord bot that automatically sends notifications for fire weather alerts anywhere in the United States.
 
-The bot checks the National Weather Service every 60 seconds and posts alerts to your Discord channel with details about the warning, affected area, severity, and expiration time.
+**Monitors these alert types:**
+- Red Flag Warning (critical fire weather conditions)
+- Fire Weather Watch (conditions may develop)
+- Fire Warning (active fire)
+- Extreme Fire Danger
+
+The bot checks the National Weather Service every 60 seconds and posts alerts to your Discord channel with details about the alert type, affected area, severity, and expiration time.
 
 ---
 
@@ -209,9 +215,10 @@ For 24/7 operation, you'll need to host the bot on a server or cloud service. So
 ## How It Works
 
 - The bot checks the National Weather Service API every 60 seconds
-- When a new Fire Weather Warning is issued anywhere in the US, it sends a notification
+- Monitors for: Red Flag Warning, Fire Weather Watch, Fire Warning, Extreme Fire Danger
+- When a new alert is issued anywhere in the US, it sends a notification
 - Each alert is only sent once (the bot remembers which alerts it has already sent)
-- Alerts include: affected area, severity, urgency, description, and expiration time
+- Alerts include: alert type, affected area, severity, urgency, description, and expiration time
 
 ---
 

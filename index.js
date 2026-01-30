@@ -6,8 +6,16 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = process.env.DISCORD_CHANNEL_ID;
 const POLL_INTERVAL = 60 * 1000; // 60 seconds
 
-// NWS API endpoint for Fire Weather Warnings
-const NWS_API_URL = 'https://api.weather.gov/alerts/active?event=Fire%20Weather%20Warning';
+// Fire-related alert types to monitor
+const FIRE_ALERT_TYPES = [
+  'Red Flag Warning',
+  'Fire Weather Watch',
+  'Fire Warning',
+  'Extreme Fire Danger'
+];
+
+// NWS API endpoint for all active alerts
+const NWS_API_URL = 'https://api.weather.gov/alerts/active';
 
 // Track alerts we've already sent (by alert ID)
 const sentAlerts = new Set();
@@ -35,18 +43,18 @@ const commands = [
     .setDescription('Show bot status and statistics'),
   new SlashCommandBuilder()
     .setName('check')
-    .setDescription('Manually check for new Fire Weather Warnings'),
+    .setDescription('Manually check for new fire weather alerts'),
   new SlashCommandBuilder()
     .setName('active')
-    .setDescription('Show count of currently active Fire Weather Warnings'),
+    .setDescription('Show count of currently active fire weather alerts'),
 ];
 
-// Fetch fire weather warnings from NWS
-async function fetchFireWeatherWarnings() {
+// Fetch fire-related alerts from NWS
+async function fetchFireAlerts() {
   try {
     const response = await fetch(NWS_API_URL, {
       headers: {
-        'User-Agent': 'FireWeatherWarningBot/1.0 (Discord Notification Bot)',
+        'User-Agent': 'FireWeatherBot/1.0 (Discord Notification Bot)',
         'Accept': 'application/geo+json'
       }
     });
@@ -56,26 +64,49 @@ async function fetchFireWeatherWarnings() {
     }
 
     const data = await response.json();
-    return data.features || [];
+    const allAlerts = data.features || [];
+
+    // Filter for fire-related alerts only
+    return allAlerts.filter(alert =>
+      FIRE_ALERT_TYPES.includes(alert.properties.event)
+    );
   } catch (error) {
     console.error('Error fetching alerts:', error.message);
     return [];
   }
 }
 
+// Get color based on alert type
+function getAlertColor(eventType, severity) {
+  // Color by event type first
+  const eventColors = {
+    'Red Flag Warning': 0xFF0000,      // Red - most critical
+    'Extreme Fire Danger': 0xFF0000,   // Red
+    'Fire Warning': 0xFF4500,          // Orange-red
+    'Fire Weather Watch': 0xFFAA00     // Orange - less urgent
+  };
+
+  if (eventColors[eventType]) {
+    return eventColors[eventType];
+  }
+
+  // Fallback to severity-based colors
+  const severityColors = {
+    'Extreme': 0xFF0000,
+    'Severe': 0xFF6600,
+    'Moderate': 0xFFCC00,
+    'Minor': 0x00FF00,
+    'Unknown': 0x808080
+  };
+  return severityColors[severity] || severityColors['Unknown'];
+}
+
 // Create a Discord embed for an alert
 function createAlertEmbed(alert, isTest = false) {
   const props = alert.properties;
+  const eventType = props.event || 'Fire Alert';
 
-  // Determine color based on severity
-  const severityColors = {
-    'Extreme': 0xFF0000,   // Red
-    'Severe': 0xFF6600,    // Orange
-    'Moderate': 0xFFCC00,  // Yellow
-    'Minor': 0x00FF00,     // Green
-    'Unknown': 0x808080    // Gray
-  };
-  const color = severityColors[props.severity] || severityColors['Unknown'];
+  const color = getAlertColor(eventType, props.severity);
 
   // Truncate description if too long (Discord limit is 4096)
   let description = props.description || 'No description available';
@@ -83,9 +114,11 @@ function createAlertEmbed(alert, isTest = false) {
     description = description.substring(0, 1997) + '...';
   }
 
+  const title = isTest ? `TEST - ${eventType}` : eventType;
+
   const embed = new EmbedBuilder()
     .setColor(color)
-    .setTitle(isTest ? 'TEST - Fire Weather Warning' : 'Fire Weather Warning')
+    .setTitle(title)
     .setDescription(description)
     .addFields(
       { name: 'Area', value: props.areaDesc || 'Unknown', inline: false },
@@ -125,7 +158,7 @@ function createAlertEmbed(alert, isTest = false) {
 
 // Check for new alerts and send notifications
 async function checkForAlerts(forceChannel = null) {
-  const alerts = await fetchFireWeatherWarnings();
+  const alerts = await fetchFireAlerts();
   const channel = forceChannel || client.channels.cache.get(CHANNEL_ID);
 
   stats.lastCheck = Date.now();
@@ -154,7 +187,7 @@ async function checkForAlerts(forceChannel = null) {
     try {
       const embed = createAlertEmbed(alert);
       await channel.send({ embeds: [embed] });
-      console.log(`Sent alert: ${alert.properties.headline || alertId}`);
+      console.log(`Sent alert: ${alert.properties.event} - ${alert.properties.headline || alertId}`);
     } catch (error) {
       console.error('Error sending alert:', error.message);
     }
@@ -204,8 +237,9 @@ client.on('interactionCreate', async interaction => {
     const testAlert = {
       properties: {
         id: 'TEST-' + Date.now(),
-        headline: 'TEST ALERT - Fire Weather Warning',
-        description: 'This is a TEST alert to verify the bot is working correctly. This is NOT a real Fire Weather Warning.\n\nIf you can see this message, the bot is configured correctly and will send real alerts when Fire Weather Warnings are issued.',
+        event: 'Red Flag Warning',
+        headline: 'TEST ALERT - Red Flag Warning',
+        description: 'This is a TEST alert to verify the bot is working correctly. This is NOT a real alert.\n\nIf you can see this message, the bot is configured correctly and will send real alerts when fire weather alerts are issued.',
         areaDesc: 'Test County, Test State',
         severity: 'Severe',
         urgency: 'Expected',
@@ -237,10 +271,11 @@ client.on('interactionCreate', async interaction => {
         { name: 'Tracked Alerts', value: sentAlerts.size.toString(), inline: true },
         { name: 'Last Check', value: lastCheck, inline: true },
         { name: 'Last Alert', value: lastAlert, inline: true },
-        { name: 'Poll Interval', value: '60 seconds', inline: true }
+        { name: 'Poll Interval', value: '60 seconds', inline: true },
+        { name: 'Monitoring', value: FIRE_ALERT_TYPES.join(', '), inline: false }
       )
       .setTimestamp()
-      .setFooter({ text: 'Fire Weather Warning Bot' });
+      .setFooter({ text: 'Fire Weather Alert Bot' });
 
     await interaction.reply({ embeds: [embed] });
   }
@@ -257,7 +292,7 @@ client.on('interactionCreate', async interaction => {
         ? `Found and sent **${result.new}** new alert(s)!`
         : 'No new alerts found.')
       .addFields(
-        { name: 'Active Warnings', value: result.total.toString(), inline: true },
+        { name: 'Active Alerts', value: result.total.toString(), inline: true },
         { name: 'New Alerts', value: result.new.toString(), inline: true }
       )
       .setTimestamp();
@@ -268,23 +303,42 @@ client.on('interactionCreate', async interaction => {
   else if (commandName === 'active') {
     await interaction.deferReply();
 
-    const alerts = await fetchFireWeatherWarnings();
+    const alerts = await fetchFireAlerts();
 
-    let description = 'No active Fire Weather Warnings at this time.';
+    let description = 'No active fire weather alerts at this time.';
     if (alerts.length > 0) {
-      // List first 10 areas
-      const areas = alerts.slice(0, 10).map(a =>
-        `• ${a.properties.areaDesc || 'Unknown area'}`
-      );
-      description = areas.join('\n');
-      if (alerts.length > 10) {
-        description += `\n\n*...and ${alerts.length - 10} more*`;
+      // Group by event type
+      const byType = {};
+      for (const a of alerts) {
+        const type = a.properties.event;
+        if (!byType[type]) byType[type] = [];
+        byType[type].push(a);
+      }
+
+      // Build description
+      const lines = [];
+      for (const [type, typeAlerts] of Object.entries(byType)) {
+        lines.push(`**${type}** (${typeAlerts.length})`);
+        // Show first 3 areas for each type
+        const areas = typeAlerts.slice(0, 3).map(a =>
+          `  • ${a.properties.areaDesc || 'Unknown area'}`
+        );
+        lines.push(...areas);
+        if (typeAlerts.length > 3) {
+          lines.push(`  *...and ${typeAlerts.length - 3} more*`);
+        }
+      }
+      description = lines.join('\n');
+
+      // Truncate if too long
+      if (description.length > 4000) {
+        description = description.substring(0, 3997) + '...';
       }
     }
 
     const embed = new EmbedBuilder()
       .setColor(alerts.length > 0 ? 0xFF6600 : 0x00AA00)
-      .setTitle(`Active Fire Weather Warnings: ${alerts.length}`)
+      .setTitle(`Active Fire Weather Alerts: ${alerts.length}`)
       .setDescription(description)
       .setTimestamp()
       .setFooter({ text: 'Data from National Weather Service' });
@@ -311,7 +365,7 @@ client.once('ready', async () => {
     console.error('Error registering commands:', error);
   }
 
-  console.log(`Monitoring for Fire Weather Warnings...`);
+  console.log(`Monitoring for: ${FIRE_ALERT_TYPES.join(', ')}`);
   console.log(`Notifications will be sent to channel: ${CHANNEL_ID}`);
 
   // Send startup message
@@ -319,8 +373,8 @@ client.once('ready', async () => {
   if (channel) {
     const startupEmbed = new EmbedBuilder()
       .setColor(0x00AA00)
-      .setTitle('Fire Weather Warning Bot Online')
-      .setDescription('Now monitoring for Fire Weather Warnings across the United States.\n\n**Commands:**\n`/test` - Send a test alert\n`/status` - Show bot status\n`/check` - Manually check for alerts\n`/active` - Show active warnings')
+      .setTitle('Fire Weather Alert Bot Online')
+      .setDescription(`Now monitoring for fire weather alerts across the United States.\n\n**Alert Types Monitored:**\n${FIRE_ALERT_TYPES.map(t => `• ${t}`).join('\n')}\n\n**Commands:**\n\`/test\` - Send a test alert\n\`/status\` - Show bot status\n\`/check\` - Manually check for alerts\n\`/active\` - Show active alerts`)
       .setTimestamp()
       .setFooter({ text: 'Polling every 60 seconds' });
 
