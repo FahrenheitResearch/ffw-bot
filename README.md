@@ -108,12 +108,14 @@ Node.js is required to run this bot.
 
 2. Navigate to the bot folder. For example:
    ```
-   cd C:\Users\YourName\Downloads\ffw-bot
+   cd C:\Users\YourName\Downloads\ffw-bot-main
    ```
    Or on Mac:
    ```
-   cd ~/Downloads/ffw-bot
+   cd ~/Downloads/ffw-bot-main
    ```
+
+   **Note:** If you downloaded the ZIP from GitHub, the folder is named `ffw-bot-main` (not `ffw-bot`).
 
 3. Run this command:
    ```
@@ -170,7 +172,7 @@ Just leave Command Prompt/Terminal open. The bot will run until you close it or 
 2. Create a new file called `start-ffw-bot.bat`
 3. Add these lines (adjust the path to your bot folder):
    ```bat
-   cd C:\Users\YourName\ffw-bot
+   cd C:\Users\YourName\Downloads\ffw-bot-main
    npm start
    ```
 4. Save the file
