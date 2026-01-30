@@ -12,7 +12,17 @@ The bot checks the National Weather Service every 60 seconds and posts alerts to
 
 ---
 
-## Setup Guide (No Coding Experience Required)
+## Quick Setup (Windows)
+
+1. Install Node.js from https://nodejs.org (LTS version)
+2. Download this repo (Code → Download ZIP) and extract it
+3. Double-click **`setup.bat`**
+4. Paste your Discord bot token and channel ID when prompted
+5. Done!
+
+---
+
+## Manual Setup Guide (All Platforms)
 
 ### Step 1: Install Node.js
 
